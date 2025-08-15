@@ -73,6 +73,8 @@ trait EvmInternalsTr: Database<Error = ErasedError> + Debug {
     ) -> Result<StateLoad<SStoreResult>, EvmInternalsError>;
 
     fn log(&mut self, log: Log);
+
+    fn ensure_loaded_account(&mut self, address: Address) -> Result<(), EvmInternalsError>;
 }
 
 /// Helper internal struct for implementing [`EvmInternals`].
@@ -152,6 +154,13 @@ where
     fn log(&mut self, log: Log) {
         self.0.log(log);
     }
+
+    fn ensure_loaded_account(&mut self, address: Address) -> Result<(), EvmInternalsError> {
+        self.0.load_account(address).map_err(EvmInternalsError::database)?;
+        self.0.touch_account(address);
+
+        Ok(())
+    }
 }
 
 /// Helper type exposing hooks into EVM and access to evm internal settings.
@@ -220,6 +229,11 @@ impl<'a> EvmInternals<'a> {
     /// Touches the account.
     pub fn touch_account(&mut self, address: Address) {
         self.internals.touch_account(address);
+    }
+
+    /// Ensures that the specified account is loaded and touched
+    pub fn ensure_loaded_account(&mut self, address: Address) -> Result<(), EvmInternalsError> {
+        self.internals.ensure_loaded_account(address)
     }
 
     /// Sets bytecode to the account.
